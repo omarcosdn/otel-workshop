@@ -1,0 +1,7 @@
+.idea
+
+apps/notification-service/node_modules
+apps/notification-service/dist
+
+apps/user-service/node_modules
+apps/user-service/dist
