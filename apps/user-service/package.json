@@ -1,0 +1,15 @@
+{
+  "name": "user-service",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "pino": "^8.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Nenhum teste implementado ainda\" && exit 0"
+  }
+} 
