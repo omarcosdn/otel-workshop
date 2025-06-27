@@ -1,0 +1,126 @@
+version: '3.8'
+
+name: otel-workshop
+
+networks:
+  otel:
+
+services:
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "8081:16686"
+      - "14268"
+      - "14250"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - otel
+
+  loki:
+    image: grafana/loki:latest
+    volumes:
+      - ./data/loki/chunks:/loki/chunks
+      - ./data/loki/rules:/loki/rules
+      - ./config/loki-config.yaml:/etc/loki/local-config.yaml
+    user: "0"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - otel
+
+  tempo:
+    image: grafana/tempo:latest
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3200/ready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "14268"
+      - "3200"
+      - "4317"
+      - "4318"
+      - "9411"
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    user: "0"
+    volumes:
+      - ./data/tempo/wal:/var/tempo/wal
+      - ./data/tempo/blocks:/var/tempo/blocks
+      - ./config/tempo-config.yaml:/etc/tempo.yaml
+    networks:
+      - otel
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus.yaml
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./config/prometheus-config.yaml:/etc/prometheus.yaml
+    ports:
+      - "9090:9090"
+    user: "0"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - otel
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_FEATURE_TOGGLES_ENABLE=tempoSearch
+    ports:
+      - "3600:3000"
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
+    user: "0"
+    volumes:
+      - ./data/grafana/data:/var/lib/grafana
+      - ./config/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    networks:
+      - otel
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./config/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - 1888:1888
+      - 8888:8888
+      - 8889:8889
+      - 13133:13133
+      - 4317:4317
+      - 4318:4318
+      - 55679:55679
+    depends_on:
+      tempo:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    networks:
+      - otel
+

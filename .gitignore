@@ -1,5 +1,7 @@
 .idea
 
+observability/data
+
 apps/notification-service/node_modules
 apps/notification-service/dist
 
