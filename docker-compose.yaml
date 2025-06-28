@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    ports:
+      - "3000:3000"   # Grafana
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "3100:3100"   # Loki API
+      - "3200:3200"   # Tempo API
+      - "9009:9009"   # Mimir API
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlSearch
+    volumes:
+      - lgtm_data:/var/lib/grafana
+
+volumes:
+  lgtm_data:
