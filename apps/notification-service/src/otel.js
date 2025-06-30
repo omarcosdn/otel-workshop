@@ -6,7 +6,7 @@ const { DiagConsoleLogger, DiagLogLevel, diag } = require('@opentelemetry/api');
 const { BatchLogRecordProcessor } = require('@opentelemetry/sdk-logs');
 const { resourceFromAttributes } = require('@opentelemetry/resources');
 const { OTLPMetricExporter } = require("@opentelemetry/exporter-metrics-otlp-http");
-const { PeriodicExportingMetricReader, MeterProvider } = require("@opentelemetry/sdk-metrics");
+const { PeriodicExportingMetricReader } = require("@opentelemetry/sdk-metrics");
 
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR);
 
@@ -15,6 +15,10 @@ const traceExporter = new OTLPTraceExporter({
 });
 const metricExporter = new OTLPMetricExporter({
   url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://localhost:4318/v1/metrics',
+});
+const metricReader = new PeriodicExportingMetricReader({
+  exporter: metricExporter,
+  exportIntervalMillis: 5000,
 });
 const logExporter = new OTLPLogExporter({
   url: process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT || 'http://localhost:4318/v1/logs',
@@ -31,14 +35,11 @@ const resource = resourceFromAttributes({
 });
 
 const sdk = new NodeSDK({
+  resource,
   traceExporter,
-  metricReader: new PeriodicExportingMetricReader({
-    exporter: metricExporter,
-    exportIntervalMillis: 5000,
-  }),
+  metricReader,
   logRecordProcessors: [logRecordProcessor],
   instrumentations: [getNodeAutoInstrumentations()],
-  resource,
 });
 
 sdk.start()
